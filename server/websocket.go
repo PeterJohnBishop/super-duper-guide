@@ -79,18 +79,28 @@ func (c *Client) readPump() {
 			log.Printf("Error decoding JSON: %v", err)
 			continue
 		}
-		fmt.Printf("Received Event: %s from User: %d\n", event.Type, event.UserID)
+		fmt.Printf("Received Event: %s from User: %s\n", event.Type, event.UserID)
 
 		switch event.Type {
 		case "chat_message":
-			log.Printf("Chat message from user %d: %s", event.UserID, event.Payload)
+			log.Printf("Chat message from user %s: %s", event.UserID, event.Payload)
 		case "status_update":
-			log.Printf("Status update from user %d: %s", event.UserID, event.Payload)
+			log.Printf("Status update from user %s: %s", event.UserID, event.Payload)
 		default:
 			log.Printf("Unknown event type: %s", event.Type)
 		}
 
-		responseText := fmt.Sprintf("Server received your event: %s", string(message))
-		c.Send <- []byte(responseText)
+		response := WebSocketEvent{
+			Type:    "acknowledgement",
+			Payload: "Event received",
+			UserID:  event.UserID,
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			log.Printf("Error encoding JSON: %v", err)
+			continue
+		}
+
+		c.Send <- responseBytes
 	}
 }
