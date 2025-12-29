@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -24,9 +23,29 @@ type Client struct {
 }
 
 type WebSocketEvent struct {
+	Type string `json:"type"`
+}
+
+type MessageEvent struct {
+	Content   string `json:"content"`
+	UserID    string `json:"user_id"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+type StatusUpdateEvent struct {
+	Status    string `json:"status"`
+	UserID    string `json:"user_id"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+type CommandEvent struct {
+	Command string          `json:"command"`
+	Data    json.RawMessage `json:"data"`
+}
+
+type AcknowledgementEvent struct {
 	Type    string `json:"type"`
 	Payload string `json:"payload"`
-	UserID  string `json:"user_id"`
 }
 
 func wsHandler(ctx *gin.Context) {
@@ -79,22 +98,52 @@ func (c *Client) readPump() {
 			log.Printf("Error decoding JSON: %v", err)
 			continue
 		}
-		fmt.Printf("Received Event: %s from User: %s\n", event.Type, event.UserID)
+
+		var response AcknowledgementEvent
 
 		switch event.Type {
-		case "chat_message":
-			log.Printf("Chat message from user %s: %s", event.UserID, event.Payload)
-		case "status_update":
-			log.Printf("Status update from user %s: %s", event.UserID, event.Payload)
+		case "MESSAGE":
+			var messageEvent MessageEvent
+			if err := json.Unmarshal(message, &messageEvent); err != nil {
+				log.Printf("Error decoding MESSAGE event: %v", err)
+				continue
+			}
+			log.Printf("Received MESSAGE event: %+v", messageEvent)
+			response = AcknowledgementEvent{
+				Type:    "acknowledgement",
+				Payload: "Event received",
+			}
+		case "STATUS":
+			var statusEvent StatusUpdateEvent
+			if err := json.Unmarshal(message, &statusEvent); err != nil {
+				log.Printf("Error decoding STATUS event: %v", err)
+				continue
+			}
+			log.Printf("Received STATUS event: %+v", statusEvent)
+			response = AcknowledgementEvent{
+				Type:    "acknowledgement",
+				Payload: "Event received",
+			}
+		case "COMMAND":
+			var commandEvent CommandEvent
+			if err := json.Unmarshal(message, &commandEvent); err != nil {
+				log.Printf("Error decoding COMMAND event: %v", err)
+				continue
+			}
+			// switch through commandEvent.Command to act on different commands
+			log.Printf("Received COMMAND event: %+v", commandEvent)
+			response = AcknowledgementEvent{
+				Type:    "acknowledgement",
+				Payload: "Event received",
+			}
 		default:
 			log.Printf("Unknown event type: %s", event.Type)
+			response = AcknowledgementEvent{
+				Type:    "acknowledgement",
+				Payload: "Event received",
+			}
 		}
 
-		response := WebSocketEvent{
-			Type:    "acknowledgement",
-			Payload: "Event received",
-			UserID:  event.UserID,
-		}
 		responseBytes, err := json.Marshal(response)
 		if err != nil {
 			log.Printf("Error encoding JSON: %v", err)
