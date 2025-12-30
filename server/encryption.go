@@ -27,7 +27,7 @@ import (
 
 var masterKey []byte
 
-func init() {
+func InitEnv() {
 	keyHex := os.Getenv("MASTER_KEY")
 	if keyHex == "" {
 		log.Fatal("MASTER_KEY environment variable is not set")

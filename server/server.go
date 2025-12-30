@@ -22,4 +22,7 @@ func StartServer() {
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
+
+	// run TUI or other blocking operations here
+
 }

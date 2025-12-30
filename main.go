@@ -11,5 +11,11 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
-	server.StartServer()
+	server.InitEnv()
+	go func() {
+		server.StartServer()
+	}()
+
+	select {}
+
 }
