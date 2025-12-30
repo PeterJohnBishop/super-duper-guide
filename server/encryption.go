@@ -10,10 +10,17 @@ import (
 	"encoding/hex"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
 	"image/png"
+	_ "image/png"
 	"io"
 	"log"
 	"os"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/webp"
 )
 
 // to generate a random 32-byte master key, use: 'go run generate.go' in the key folder
