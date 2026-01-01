@@ -16,12 +16,24 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type WebSocketEvent struct {
+	Type string `json:"type"`
+}
+
+type UserMsg struct {
+	Type      string `json:"type"`
+	Status    string `json:"status"`
+	UserID    string `json:"user_id"`
+	Timestamp int64  `json:"timestamp"`
+}
+
 type Hub struct {
 	clients    map[*Client]bool
 	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
-	History    [][]byte
+	history    [][]byte
+	userMap    map[string]*Client
 }
 
 func NewHub() *Hub {
@@ -30,6 +42,8 @@ func NewHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
+		history:    make([][]byte, 0),
+		userMap:    make(map[string]*Client),
 	}
 }
 
@@ -38,14 +52,44 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			history, _ := json.Marshal(h.History)
-			client.Send <- history
+			for _, msg := range h.history {
+				client.Send <- msg
+			}
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
+				exitEvent := UserMsg{
+					Type:   "USER",
+					Status: "disconnected",
+					UserID: client.UserData.UserID,
+				}
+				payload, _ := json.Marshal(exitEvent)
+
 				delete(h.clients, client)
 				close(client.Send)
+
+				go func() { h.broadcast <- payload }()
 			}
 		case message := <-h.broadcast:
+			var ev WebSocketEvent
+			json.Unmarshal(message, &ev)
+
+			if ev.Type == "MSG" {
+				h.history = append(h.history, message)
+				if len(h.history) > 100 {
+					h.history = h.history[1:]
+				}
+			}
+
+			if ev.Type == "USER" {
+				var uMsg UserMsg
+				json.Unmarshal(message, &uMsg)
+				for c := range h.clients {
+					if c.UserData.UserID == uMsg.UserID {
+						c.UserData.Status = uMsg.Status
+						break
+					}
+				}
+			}
 			for client := range h.clients {
 				select {
 				case client.Send <- message:
@@ -59,9 +103,10 @@ func (h *Hub) Run() {
 }
 
 type Client struct {
-	Hub  *Hub
-	Conn *websocket.Conn
-	Send chan []byte
+	Hub      *Hub
+	Conn     *websocket.Conn
+	Send     chan []byte
+	UserData UserMsg
 }
 
 func (c *Client) readPump() {
