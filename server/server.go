@@ -9,10 +9,9 @@ import (
 func StartServer() {
 	r := gin.Default()
 
-	hub := NewHub()
-	go hub.Run()
+	hubManager := NewHubManager()
 
-	AddWebSocketRoutes(r, hub)
+	AddWebSocketRoutes(r, hubManager)
 
 	log.Println("Your localhost:8080 is serving Gin!")
 	if err := r.Run(":8080"); err != nil {
