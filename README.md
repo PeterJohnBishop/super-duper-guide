@@ -2,4 +2,4 @@
 
 Go Gin server with websocket connection.
 
-AES-GCM encryption/decryption.
+suber-duper-guide-wss-932a960b6d56.herokuapp.com/
